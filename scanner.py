@@ -14,10 +14,10 @@ import subprocess
 from PIL import Image, ImageTk
 
 root = Tk()
-root.wm_attributes("-fullscreen", "true") #fullscreen wo title
-#root.wm_attributes("-type", "splash")
-screenWidth=320
-screenHeight=480
+#root.wm_attributes("-fullscreen", "true") #fullscreen wo title
+root.wm_attributes("-type", "splash")
+screenWidth=480
+screenHeight=320
 root.geometry(str(screenWidth)+"x" + str(screenHeight))
 root.configure(background='white')
 
@@ -25,9 +25,7 @@ list_of_barcodes = [65833254, 12345678, 22222222, 33333333, 44444444]
 productcode = 00000000
 currentProduct = None
 scannedProducts = []
-global productBeschrijving
 productBeschrijving=' '
-global currentProductIndex
 currentProductIndex=None
 #photo = PhotoImage(file="logo.png")
 productCost=1.00
@@ -55,9 +53,11 @@ def loop():
     
 def volgende_artikel():
     #nieuwe code API calls
-    prepareBarcodeSend()
+    #prepareBarcodeSend()
 
 
+    global productBeschrijving
+    global currentProductIndex
     
     #het volgende artikel wordt gescand
     i = random.randint(0,4)
@@ -65,23 +65,18 @@ def volgende_artikel():
 
     #scannedProducts.append(productcode)
     if productcode == 22222222:
-        global productBeschrijving
         productBeschrijving = 'Yoghurt'
         
     elif productcode == 65833254:
-        global productBeschrijving
         productBeschrijving = 'melk'
         
     elif productcode == 12345678:
-        global productBeschrijving
         productBeschrijving = 'Banaan'
         
     elif productcode == 33333333:
-        global productBeschrijving
         productBeschrijving = 'Brood'
         
     elif productcode == 44444444:
-        global productBeschrijving
         productBeschrijving = 'Kiwi'
 
     exists=False
@@ -89,7 +84,6 @@ def volgende_artikel():
         if p.count(productBeschrijving)!=0:
             exists=True
             p[1]+=1
-            global currentProductIndex
             currentProductIndex=scannedProducts.index(p)
 ##            addOneToAantal(currentProductIndex)
             select_product()
@@ -97,7 +91,6 @@ def volgende_artikel():
     if exists==False:    
         artikel=[productBeschrijving, 1]
         scannedProducts.append(artikel)
-        global currentProductIndex
         currentProductIndex=len(scannedProducts)-1
         select_product()
 ##        addProductToTable()
@@ -109,15 +102,13 @@ def volgende_artikel():
     print(scannedProducts)
 
 def clear_products():
+    global currentProductIndex
+    
     productCode = 00000000
     scannedProducts[:] = []
     product_text.delete('1.0', END)
-
-    photo2 = PhotoImage(file="")
-    picture_label.configure(image = photo2)
-    picture_label.image=photo2
-    global currentProductIndex
     currentProductIndex=None
+    prepareBackToStart()
 ##
 ##    row=0
 ##    for i in range(0, len(productenTabel)-1):
@@ -132,19 +123,20 @@ def update_info():
         list_text.insert('1.0', p[0]+' '+ str(p[1]) + '\n', CENTER)
 
 def select_product():
+    w1.itemconfig(textID, text="\n"+str(scannedProducts[currentProductIndex][1]))
     product_text.delete('1.0', END)
     if productBeschrijving!='':
         product_text.insert('1.0', str(scannedProducts[currentProductIndex][1]), CENTER)
         if productBeschrijving=='Yoghurt':
-            photo2 = PhotoImage(file="yoghurt.gif")
+            photo2 = createImage("yoghurt.gif")
         elif productBeschrijving == 'melk':
-            photo2 = PhotoImage(file="milk2.gif")
+            photo2 = createImage("milk2.gif")
         elif productBeschrijving == 'Banaan':
-            photo2 = PhotoImage(file="banaan.gif")
+            photo2 = createImage("banaan.gif")
         elif productBeschrijving == 'Brood':
-            photo2 = PhotoImage(file="brood.gif")
+            photo2 = createImage("brood.gif")
         elif productBeschrijving == 'Kiwi':
-            photo2 = PhotoImage(file="kiwi.gif")
+            photo2 = createImage("kiwi.gif")
         picture_label.configure(image = photo2)
         picture_label.image=photo2
         
@@ -159,6 +151,9 @@ def plusOne():
            select_product()
 
 def MinusOne():
+    global currentProductIndex
+    global productBeschrijving
+    
     if currentProductIndex!=None and productBeschrijving!='':
         if scannedProducts[currentProductIndex][1]>1:
             scannedProducts[currentProductIndex][1]-=1
@@ -168,19 +163,27 @@ def MinusOne():
         elif scannedProducts[currentProductIndex][1]==1:
             scannedProducts.remove(scannedProducts[currentProductIndex])
 ##            refreshTable()
-            global currentProductIndex
             currentProductIndex=None
-            global productBeschrijving
             productBeschrijving=''
             print('subtract to 0')
-            photo2 = PhotoImage(file="")
-            picture_label.configure(image = photo2)
-            picture_label.image=photo2
-            select_product()
+##            photo2 = PhotoImage(file="")
+##            picture_label.configure(image = photo2)
+##            picture_label.image=photo2
+##            resetToStart()
+            prepareBackToStart()
+            #clear_products()
+
+
+def resetToStart():
+    photo2 = createImage("logo.png")
+    picture_label.configure(image = photo2)
+    picture_label.image=photo2
+    w1.itemconfig(textID, text="\n")
 
 def cancelProduct():
-    root.wm_attributes("-fullscreen", "false")
-    root.geometry(str(screenWidth)+"x" + str(screenHeight))
+    clear_products()
+    #root.wm_attributes("-fullscreen", "false")
+    #root.geometry(str(screenWidth)+"x" + str(screenHeight))
     print("Cancel current product")
 
 def prepareBarcodeSend():
@@ -260,9 +263,11 @@ def prepareProductSend():
 
 def productAddingFailed():
     print("sadface")
+    showOnbekend()
 
 def productAddingSuccesfull():
     print("happyface")
+    showSucces()
 
 def prepareTransition():
     if connectionEstablished:
@@ -292,7 +297,7 @@ def establishConnection():
     if connectionEstablished==False: #file.readline()=="":
         #file.close()
         print("starting request")
-        loginRequest = {"grant_type":"password", "client_id":"1", "client_secret":"7jqsZLXvYCyaFkpLXaNZ800kduGtCj8LvyU3MjBo", "username":"svandersligte@hotmail.com", "password":"@Scanbutler54321", "scope":""}
+        loginRequest = {}
         try:
             r = requests.post("https://api.scanbutler.nl/oauth/token", data=loginRequest)
             print(r.text)
@@ -332,7 +337,31 @@ def tokenTimer():
         else:
             break
 
+def removeStart():
+    #later kan ik hier een pass van maken
+    startButton.grid_remove()
+    volgende_artikel()
 
+def backToStart():
+    startButton.grid()
+
+def prepareBackToStart():
+    resetToStart()
+    backToStart()
+
+def showSucces():
+    succesButton.grid()
+
+def showOnbekend():
+    onbekendButton.grid()
+
+def removeSucces():
+    succesButton.grid_remove()
+    prepareBackToStart()
+    
+def removeOnbekend():
+    onbekendButton.grid_remove()
+    prepareBackToStart()
 
 ##
 ##def removeProduct(row):
@@ -412,28 +441,33 @@ def tokenTimer():
 #top_label = Label(root, text='Scan het volgende artikel', height=2, width=113, bg='light blue')
 #top_label.grid(row=0, column=0, columnspan=9)
 
-empty_label1 = Label(root, height=1, bg='white')
-empty_label1.grid(row=0, column=0, columnspan=3)
+empty_label1 = Label(root, width=1, bg='white')
+empty_label1.grid(row=0, column=0, rowspan=3)
 
 ##empty_label2 = Label(root)
 ##empty_label2.grid(row=2, column=0, rowspan=4)
 
 picture_label = Label(root, image=photo, width=256, height=256, bg='white')
 picture_label.photo=photo
-picture_label.grid(row=1, column=0, columnspan=3)
+picture_label.grid(row=0, column=1, rowspan=3)
 
 
 quitFrame=Frame(root)
-quitFrame.grid(row=1, column=2, sticky=NE)
+quitFrame.grid(row=0, column=1, sticky=NW)
 
-quitPhoto = PhotoImage(file="cancel.png")
+quitPhoto = createImage("cancel.png")
 quitPoppup = Button(quitFrame, text="Minus", image=quitPhoto, activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, bg='white', command=cancelProduct)#, command = quitPoppup)
 quitPoppup.photo=quitPhoto
-quitPoppup.pack(anchor=NE)
+quitPoppup.pack(anchor=NW)
+
+w1 = Canvas(root, height="2c", width="2c", relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, bg="white")
+textID = w1.create_text(5, 5, anchor="e", font=("Arial",50), angle=90, text="\n")
+w1.grid(row=1, column=2)
+
 
 product_text = Text(root, font=("Arial",50), fg='#4d4848', height=1, width=2, relief=FLAT, highlightthickness=0, highlightbackground='white')
 product_text.tag_configure("center", justify='center')
-product_text.grid(row=2, column=1)
+#product_text.grid(row=1, column=2)
 product_text.insert('1.0', '00000000', CENTER)
 
 list_text = Text(root, font=("Arial",20), height=5, width=40)
@@ -464,26 +498,46 @@ list_text.grid_forget()
 #changeCel(0, 2, "€2,50")
 #changeCel(0, 3, "€2,50")
 
-plusPhoto = PhotoImage(file="plus.png")
-plus1 = Button(root, text="plus", image=plusPhoto, fg="blue", width=111, height=100, activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, bg='white', command = plusOne)
+plusPhoto = createImage("plus.png")
+plus1 = Button(root, text="plus", image=plusPhoto, fg="blue", width=100, height=111, activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, bg='white', command = plusOne)
 plus1.photo=plusPhoto
-minusPhoto = PhotoImage(file="min.png")
-Minus1 = Button(root, text="Minus", image=minusPhoto, fg="blue", width=111, height=100, activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, bg='white', command = MinusOne)
+minusPhoto = createImage("min.png")
+Minus1 = Button(root, text="Minus", image=minusPhoto, fg="blue", width=100, height=111, activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, bg='white', command = MinusOne)
 Minus1.photo=minusPhoto
 
-plus1.grid(row=2, column=2)
-Minus1.grid(row=2, column=0)
+plus1.grid(row=0, column=2)
+Minus1.grid(row=2, column=2)
 
-artikel_button = Button(root, text="volgende artikel", fg="red", command = volgende_artikel, width=20)
-artikel_button.grid(row=4, column=0, columnspan=3)
+artikel_button = Button(root, text="O", fg="red", command = volgende_artikel, height=3)
+artikel_button.grid(row=0, column=4, rowspan=3)
 ##
 ##clear_button = Button(root, text="Clear", fg="red", command = clear_products, width=20)
 ##clear_button.grid(row=4, column=1)
 
-confirmPhoto = PhotoImage(file="confirm.png")
-confirm_button = Button(root, image=confirmPhoto, bg='white', activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, width=310, height=80, command = confirmProduct)
+confirmPhoto = createImage("confirm.png")
+confirm_button = Button(root, image=confirmPhoto, bg='white', activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, width=80, height=310, command = confirmProduct)
 confirm_button.photo=confirmPhoto
-confirm_button.grid(row=3, column=0, columnspan=3)
+confirm_button.grid(row=0, column=3, rowspan=3)
+
+startPhoto = createImage("logo.png")
+startButton = Button(root, image=startPhoto, bg='white', activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, width=screenWidth, height=screenHeight, command = removeStart)
+startButton.photo=startPhoto
+startButton.grid(row=0, column=0, rowspan=5, columnspan=5)
+
+onbekendPhoto = createImage("logo.png")
+onbekendButton = Button(root, image=onbekendPhoto, bg='white', activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, width=screenWidth, height=screenHeight, command = removeOnbekend)
+onbekendButton.photo=onbekendPhoto
+onbekendButton.grid(row=0, column=0, rowspan=5, columnspan=5)
+onbekendButton.grid_remove()
+
+succesPhoto = createImage("logo.png")
+succesButton = Button(root, image=succesPhoto, bg='white', activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, width=screenWidth, height=screenHeight, command = removeSucces)
+succesButton.photo=succesPhoto
+succesButton.grid(row=0, column=0, rowspan=5, columnspan=5)
+succesButton.grid_remove()
+
+
+    
 
 
 _thread.start_new_thread(loop,())
