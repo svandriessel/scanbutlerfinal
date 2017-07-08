@@ -363,6 +363,15 @@ def removeOnbekend():
     onbekendButton.grid_remove()
     prepareBackToStart()
 
+def imagePreparer(filename):
+    image = Image.open(filename)
+    image = image.rotate(90)
+    image = imageScaler(image)
+    return ImageTk.PhotoImage(image)
+
+def imageScaler(image):
+    return image.thumbnail(256, 256)
+
 ##
 ##def removeProduct(row):
 ##    columnNumber=0
@@ -519,18 +528,18 @@ confirm_button = Button(root, image=confirmPhoto, bg='white', activebackground='
 confirm_button.photo=confirmPhoto
 confirm_button.grid(row=0, column=3, rowspan=3)
 
-startPhoto = createImage("logo.png")
+startPhoto = createImage("start.png")
 startButton = Button(root, image=startPhoto, bg='white', activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, width=screenWidth, height=screenHeight, command = removeStart)
 startButton.photo=startPhoto
 startButton.grid(row=0, column=0, rowspan=5, columnspan=5)
 
-onbekendPhoto = createImage("logo.png")
+onbekendPhoto = createImage("onbekend.png")
 onbekendButton = Button(root, image=onbekendPhoto, bg='white', activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, width=screenWidth, height=screenHeight, command = removeOnbekend)
 onbekendButton.photo=onbekendPhoto
 onbekendButton.grid(row=0, column=0, rowspan=5, columnspan=5)
 onbekendButton.grid_remove()
 
-succesPhoto = createImage("logo.png")
+succesPhoto = createImage("succes.png")
 succesButton = Button(root, image=succesPhoto, bg='white', activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, width=screenWidth, height=screenHeight, command = removeSucces)
 succesButton.photo=succesPhoto
 succesButton.grid(row=0, column=0, rowspan=5, columnspan=5)
