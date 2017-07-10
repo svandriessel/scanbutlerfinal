@@ -14,8 +14,8 @@ import subprocess
 from PIL import Image, ImageTk
 
 root = Tk()
-#root.wm_attributes("-fullscreen", "true") #fullscreen wo title
-root.wm_attributes("-type", "splash")
+root.wm_attributes("-fullscreen", "true") #fullscreen wo title
+#root.wm_attributes("-type", "splash")
 screenWidth=480
 screenHeight=320
 root.geometry(str(screenWidth)+"x" + str(screenHeight))
@@ -225,9 +225,9 @@ def checkBarcode(productData):
 def sendProduct(productData):
     #print("info: " + str(tokenInfoAPI) + str(tokenInfoAPI.get("access_token")))
     header = {"Authorization":tokenInfoAPI.get("access_token")}
-    #print(header)
+    print("\n\n"+str(header)+"\n\n")
     try:
-        r = requests.post("https://api.scanbutler.nl/V1/storage/checkout", data=productData, headers=header)
+        r = requests.post("https://api.scanbutler.nl/V1/user/storage/checkout", data=productData, headers=header)
         print(r.text)
         print("statuscode = " + r.statuscode)
         if r.statuscode >=100 and r.statuscode <300:
