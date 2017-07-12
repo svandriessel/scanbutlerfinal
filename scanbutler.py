@@ -6,6 +6,7 @@ import PIL
 import json
 import requests
 import datetime
+from io import BytesIO
 
 import time
 import random
@@ -25,7 +26,7 @@ list_of_barcodes = [65833254, 12345678, 22222222, 33333333, 44444444]
 productcode = 00000000
 currentProduct = None
 scannedProducts = []
-productBeschrijving=' '
+productBeschrijving=''
 currentProductIndex=None
 #photo = PhotoImage(file="logo.png")
 productCost=1.00
@@ -44,41 +45,64 @@ dataFromApi=""
 tokenInfoAPI=""
 connectionEstablished = False
 timeConnectionEstablished = None
+onHomeScreen = True
+active = True
+imageUrl =''
 
 def loop():
-    while 1:
-        update_info()
-        time.sleep(0.1)
-        
+    global active
     
+    while 1:
+        if active:
+            if onHomeScreen:
+                if scanActivator():
+                    productAfhandeling()
+                else:
+                    active=False
+        time.sleep(0.1)
+
+def setActive():
+    global active
+    if active==False:
+        active = True
+
+def productAfhandeling():
+    methodDict = {"productUnknown":showOnbekend, "productKnown":volgende_artikel, "badConnection":showConnectie}
+    methodDict[prepareProductSend()]()
+    
+    #methodDict = {"productUnknown":showOnbekend, "productKnown":volgende_artikel, "badConnection":showConnectie}
+    #methodDict[prepareBarcodeSend()]()
+
+    
+        
 def volgende_artikel():
     #nieuwe code API calls
     #prepareBarcodeSend()
-
-
+    removeStart()
+    
     global productBeschrijving
     global currentProductIndex
     
     #het volgende artikel wordt gescand
-    i = random.randint(0,4)
-    productcode = list_of_barcodes[i]
-
-    #scannedProducts.append(productcode)
-    if productcode == 22222222:
-        productBeschrijving = 'Yoghurt'
-        
-    elif productcode == 65833254:
-        productBeschrijving = 'melk'
-        
-    elif productcode == 12345678:
-        productBeschrijving = 'Banaan'
-        
-    elif productcode == 33333333:
-        productBeschrijving = 'Brood'
-        
-    elif productcode == 44444444:
-        productBeschrijving = 'Kiwi'
-
+##    i = random.randint(0,4)
+##    productcode = list_of_barcodes[i]
+##
+##    #scannedProducts.append(productcode)
+##    if productcode == 22222222:
+##        productBeschrijving = 'Yoghurt'
+##        
+##    elif productcode == 65833254:
+##        productBeschrijving = 'melk'
+##        
+##    elif productcode == 12345678:
+##        productBeschrijving = 'Banaan'
+##        
+##    elif productcode == 33333333:
+##        productBeschrijving = 'Brood'
+##        
+##    elif productcode == 44444444:
+##        productBeschrijving = 'Kiwi'
+    
     exists=False
     for p in scannedProducts:
         if p.count(productBeschrijving)!=0:
@@ -103,12 +127,16 @@ def volgende_artikel():
 
 def clear_products():
     global currentProductIndex
-    
+    global productCode
+    global scannedProducts
+    global productBeschrijving
+
+    productBeschrijving=""
     productCode = 00000000
     scannedProducts[:] = []
     product_text.delete('1.0', END)
     currentProductIndex=None
-    prepareBackToStart()
+    
 ##
 ##    row=0
 ##    for i in range(0, len(productenTabel)-1):
@@ -116,29 +144,48 @@ def clear_products():
 ##        row=row+1
 ##    print('all clear')
 
-def update_info():
+def update_counter():
+
+    if productBeschrijving!='':
+        w1.itemconfig(textID, text="\n"+str(scannedProducts[currentProductIndex][1]))
     
-    list_text.delete('1.0', END)
-    for p in scannedProducts:
-        list_text.insert('1.0', p[0]+' '+ str(p[1]) + '\n', CENTER)
+def update_image():
+    
+    if productBeschrijving!='':
+##        if productBeschrijving=='Yoghurt':
+##            photo2 = createImage("yoghurt.gif")
+##        elif productBeschrijving == 'melk':
+##            photo2 = createImage("milk2.gif")
+##        elif productBeschrijving == 'Banaan':
+##            photo2 = createImage("banaan.gif")
+##        elif productBeschrijving == 'Brood':
+##            photo2 = createImage("brood.gif")
+##        elif productBeschrijving == 'Kiwi':
+##            photo2 = createImage("kiwi.gif")
+        if productBeschrijving=='logo':
+            photo2 = createImage("logo.png")
+        elif imageUrl!="":
+            photo2 = createImageFromUrl(imageUrl)
+        else:
+            photo2 = createImage("logo.png")
+    else:
+        photo2 = createImage("logo.png")
+        
+    picture_label.configure(image = photo2)
+    picture_label.image=photo2
+    
+##    list_text.delete('1.0', END)
+##    for p in scannedProducts:
+##        list_text.insert('1.0', p[0]+' '+ str(p[1]) + '\n', CENTER)
 
 def select_product():
-    w1.itemconfig(textID, text="\n"+str(scannedProducts[currentProductIndex][1]))
-    product_text.delete('1.0', END)
-    if productBeschrijving!='':
-        product_text.insert('1.0', str(scannedProducts[currentProductIndex][1]), CENTER)
-        if productBeschrijving=='Yoghurt':
-            photo2 = createImage("yoghurt.gif")
-        elif productBeschrijving == 'melk':
-            photo2 = createImage("milk2.gif")
-        elif productBeschrijving == 'Banaan':
-            photo2 = createImage("banaan.gif")
-        elif productBeschrijving == 'Brood':
-            photo2 = createImage("brood.gif")
-        elif productBeschrijving == 'Kiwi':
-            photo2 = createImage("kiwi.gif")
-        picture_label.configure(image = photo2)
-        picture_label.image=photo2
+
+    update_counter()
+    update_image()
+    #product_text.delete('1.0', END)
+    
+        #product_text.insert('1.0', str(scannedProducts[currentProductIndex][1]), CENTER)
+        
         
     print(productBeschrijving)
 
@@ -148,30 +195,28 @@ def plusOne():
            scannedProducts[currentProductIndex][1]+=1
 ##           addOneToAantal(currentProductIndex)
            print('add one')
-           select_product()
+           update_counter()
 
 def MinusOne():
-    global currentProductIndex
-    global productBeschrijving
     
     if currentProductIndex!=None and productBeschrijving!='':
         if scannedProducts[currentProductIndex][1]>1:
             scannedProducts[currentProductIndex][1]-=1
 ##            subtractOneOfAantal(currentProductIndex)
             print('subtract one')
-            select_product()
+            update_counter()
         elif scannedProducts[currentProductIndex][1]==1:
             scannedProducts.remove(scannedProducts[currentProductIndex])
 ##            refreshTable()
-            currentProductIndex=None
-            productBeschrijving=''
+##            currentProductIndex=None
+##            productBeschrijving=''
             print('subtract to 0')
 ##            photo2 = PhotoImage(file="")
 ##            picture_label.configure(image = photo2)
 ##            picture_label.image=photo2
 ##            resetToStart()
-            prepareBackToStart()
-            #clear_products()
+##            prepareBackToStart()
+            cancelProduct()
 
 
 def resetToStart():
@@ -182,29 +227,30 @@ def resetToStart():
 
 def cancelProduct():
     clear_products()
+    prepareBackToStart()
     #root.wm_attributes("-fullscreen", "false")
     #root.geometry(str(screenWidth)+"x" + str(screenHeight))
     print("Cancel current product")
 
 def prepareBarcodeSend():
     if prepareTransition():
-        barcodeDict = prepareProductSend()
-        if checkBarcode(barcodeDict.get("barcode")):
-            print("Barcode was send")
-        else:
-            print("Barcode was not send succesfully")
+        return checkBarcode(productBeschrijving)
+    else:
+        return "badConnection"
         
-
 def checkBarcode(productData):
     
-    header = {"Authorization":tokenInfoAPI.get("access_token")}
+    header = {"Authorization": "Bearer "+tokenInfoAPI.get("access_token")}
     url = "https://api.scanbutler.nl/V1/product/" + productData
+    print(str(header))
     print(url)
+    print("begin try")
     try:
-        r = requests.get(url)
+        print("start try")
+        r = requests.get(url, headers=header)
         print(r.text)
-        print("statuscode = " + r.statuscode)
-        if r.statuscode >=100 and r.statuscode <300:
+        #print("statuscode = " + r.status_code)
+        if True:#r.status_code >=100 and r.status_code <300:
             print(r.text)
             file = open("barcodeTransmissionLog.txt", "a")
             dataDictionary = json.loads(r.text)
@@ -214,50 +260,69 @@ def checkBarcode(productData):
             print("file written")
             file.close()       
             print("barcode check succesfull")
-            return True
+            check = dataDictionary.get("name")
+            if check=="Not found":
+                return "productUnknown"
+            elif check==None:
+                return "badConnection"
+            else:
+                return "productKnown"
         else:
-            print("something went wrong with checking the barcode")
-            return False
+            print("Server returned an exception while checking barcode")
+            return "badConnection"
     except:
-        print("something went wrong with checking the barcode")
-        return False
+        print("exception was called while checking the barcode")
+        return "badConnection"
 
 def sendProduct(productData):
+    global imageUrl
     #print("info: " + str(tokenInfoAPI) + str(tokenInfoAPI.get("access_token")))
-    header = {"Authorization":tokenInfoAPI.get("access_token")}
+    header = {"Authorization":"Bearer "+tokenInfoAPI.get("access_token")}
     print("\n\n"+str(header)+"\n\n")
     try:
         r = requests.post("https://api.scanbutler.nl/V1/user/storage/checkout", data=productData, headers=header)
         print(r.text)
-        print("statuscode = " + r.statuscode)
-        if r.statuscode >=100 and r.statuscode <300:
+        #print("statuscode = " + r.statuscode)
+        if True:
             print(r.text)
             file = open("productTransmissionLog.txt", "w")
             dataDictionary = json.loads(r.text)
+            file.write("\n" + "Current time: "+time.asctime() + "\n")
             print("dictionary created")
             json.dump(r.json(), file)
             print("file written")
             file.close()
-            return True
+            print("checkout succesfull")
+            if dataDictionary.get("checkout")==False:#check de dictionary of het succesvol was
+                return "productUnknown"
+            elif dataDictionary.get("checkout")==None:
+                return "badConnection"
+            else:
+                if dataDictionary.get("product")!=None:
+                    imageUrl = dataDictionary.get("product").get("image_url")
+                return "productKnown"
         else:
-            return False
+            print("Server returned an exception while checking barcode")
+            return "badConnection"
         
     except:
-        print("something went wrong with adding the product to checkout")
-        return False
+        print("exception was called while adding the product to checkout")
+        return "badConnection"
 
 def confirmProduct():
-    data = prepareProductSend()
-    if prepareTransition():
-        if sendProduct(data):
-            print("product succesfully added")
-            productAddingSuccesfull()
-        else:
-            print("product failed to be added")
-            productAddingFailed()
+    methodDict = {"productUnknown":showOnbekend, "productKnown":productAddingSuccesfull, "badConnection":showConnectie}
+    methodDict[prepareProductSend()]()
+    
 
 def prepareProductSend():
-    barcode = "8710466246424"
+    data = prepareBarcode()
+    if prepareTransition():
+        return sendProduct(data)
+    else:
+        return "badConnection"
+
+def prepareBarcode():
+    barcode = productBeschrijving
     data = {"barcode":barcode}
     return data
 
@@ -276,7 +341,7 @@ def prepareTransition():
         if establishConnection():
             return True
         else:
-            time.sleep(5)
+            time.sleep(1)
             if establishConnection():
                 return True
             else:
@@ -285,6 +350,7 @@ def prepareTransition():
 
 def setupConnectionFailed():
     print("sadface + please check your internetconnection")
+    showConnectie()
 
 def establishConnection():
     global tokenInfoAPI
@@ -299,7 +365,7 @@ def establishConnection():
         print("starting request")
         loginRequest = {}
         try:
-            r = requests.post("https://api.scanbutler.nl/oauth/token", data=loginRequest)
+            r = requests.post("https://api.scanbutler.nl/oauth/token", data=loginRequest, timeout=1)
             print(r.text)
             file = open("dataSave.txt", "w")
             dataDictionary = json.loads(r.text)
@@ -338,22 +404,35 @@ def tokenTimer():
             break
 
 def removeStart():
-    #later kan ik hier een pass van maken
+    global onHomeScreen
     startButton.grid_remove()
-    volgende_artikel()
+    onHomeScreen = False
 
 def backToStart():
+    resetToStart()
+    global onHomeScreen
     startButton.grid()
+    onHomeScreen = True
+    global imageUrl
+    imageUrl=""
 
 def prepareBackToStart():
-    resetToStart()
     backToStart()
 
 def showSucces():
+    if onHomeScreen:
+        removeStart()
     succesButton.grid()
 
 def showOnbekend():
+    if onHomeScreen:
+        removeStart()
     onbekendButton.grid()
+
+def showConnectie():
+    if onHomeScreen:
+        removeStart()
+    connectieButton.grid()
 
 def removeSucces():
     succesButton.grid_remove()
@@ -363,6 +442,10 @@ def removeOnbekend():
     onbekendButton.grid_remove()
     prepareBackToStart()
 
+def removeConnectie():
+    connectieButton.grid_remove()
+    prepareBackToStart()
+
 def imagePreparer(filename):
     image = Image.open(filename)
     image = image.rotate(90)
@@ -370,8 +453,56 @@ def imagePreparer(filename):
     return ImageTk.PhotoImage(image)
 
 def imageScaler(image):
-    return image.thumbnail(256, 256)
+    basewidth = 250
+    baseheight= 250
+    if image.size[0]>image.size[1]:
+        wpercent = (basewidth/float(image.size[0]))
+        hsize = int((float(image.size[1])*float(wpercent)))
+        image = image.resize((basewidth,hsize), PIL.Image.ANTIALIAS)
+    else:
+        hpercent = (baseheight/float(image.size[1]))
+        wsize = int((float(image.size[0])*float(hpercent)))
+        image = image.resize((wsize,baseheight), PIL.Image.ANTIALIAS)
+    return image
 
+def createImageFromUrl(url):
+    #image = Image.open(requests.get(url, stream=True).raw)
+    r = requests.get(url)
+    image = Image.open(BytesIO(r.content))
+    image = imageScaler(image)
+    image = image.rotate(90)
+    return ImageTk.PhotoImage(image)
+
+def scan():
+    global productBeschrijving
+    scannerProcess = subprocess.Popen(['python', 'scan.py'], shell=False, stdout=subprocess.PIPE)
+    answerTuple =scannerProcess.communicate()
+    answerString = answerTuple[0]
+    answerString=answerString.decode('utf-8')
+    answerList=[]
+    for segment in answerString.split("\n"):
+        answerList.append(segment)
+    print(answerList)
+    if len(answerList)>1:
+        if answerList[1]=="decoded":
+            productBeschrijving = answerList[2]
+            return True
+        else:
+            return False
+    else:
+        return False
+
+def scanActivator():
+    if scan():
+        print("scan succesfull, preparing product\n")
+        return True
+    else:
+        for x in range(0, 120):
+            if scan():
+                return True            
+            time.sleep(0.5)
+        return False
+    
 ##
 ##def removeProduct(row):
 ##    columnNumber=0
@@ -519,6 +650,7 @@ Minus1.grid(row=2, column=2)
 
 artikel_button = Button(root, text="O", fg="red", command = volgende_artikel, height=3)
 artikel_button.grid(row=0, column=4, rowspan=3)
+artikel_button.grid_remove()
 ##
 ##clear_button = Button(root, text="Clear", fg="red", command = clear_products, width=20)
 ##clear_button.grid(row=4, column=1)
@@ -529,7 +661,7 @@ confirm_button.photo=confirmPhoto
 confirm_button.grid(row=0, column=3, rowspan=3)
 
 startPhoto = createImage("start.png")
-startButton = Button(root, image=startPhoto, bg='white', activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, width=screenWidth, height=screenHeight, command = removeStart)
+startButton = Button(root, image=startPhoto, bg='white', activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, width=screenWidth, height=screenHeight, command = setActive)
 startButton.photo=startPhoto
 startButton.grid(row=0, column=0, rowspan=5, columnspan=5)
 
@@ -545,6 +677,11 @@ succesButton.photo=succesPhoto
 succesButton.grid(row=0, column=0, rowspan=5, columnspan=5)
 succesButton.grid_remove()
 
+connectiePhoto = createImage("connectie.png")
+connectieButton = Button(root, image=connectiePhoto, bg='white', activebackground='white', relief=SUNKEN, highlightthickness=0, highlightbackground='white', borderwidth=0, width=screenWidth, height=screenHeight, command = removeConnectie)
+connectieButton.photo=connectiePhoto
+connectieButton.grid(row=0, column=0, rowspan=5, columnspan=5)
+connectieButton.grid_remove()
 
     
 
